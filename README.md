@@ -16,6 +16,7 @@ This fork includes significant correctness fixes, performance optimizations, and
 - **Precomputed IDF map** — all IDF values computed at construction, not on every query
 - **Immutable structs after construction** — all mutexes removed; structs are safe for concurrent reads with zero synchronization overhead
 - **Vectorized k-value computation** — `k1*(1-b) + k1*b*docLen/avgDocLen` computed in bulk via SIMD
+- **SafeTensors serialization** — save/load precomputed indexes using the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format; skip corpus reprocessing on startup
 
 ### Code Quality
 - **Flat package layout** — removed the nested `bm25/bm25` package; import directly as `github.com/crawlab-team/bm25`
@@ -79,11 +80,11 @@ Both implementations use the same shared test corpus (generated from `testdata/g
 
 ```bash
 # Run the comparison script
-./run_benchmarks.sh
+./benchmark/run_benchmarks.sh
 
 # Or run individually:
 go test -bench=. -benchmem -benchtime=2s -run='^$'
-python3 bench_python.py
+python3 benchmark/bench_python.py
 ```
 
 ## Installation
@@ -148,6 +149,28 @@ if err != nil {
     // Handle error
 }
 ```
+
+### Serialization
+
+Save a computed index to disk using [SafeTensors](https://huggingface.co/docs/safetensors/) format, then load it back without reprocessing the corpus:
+
+```go
+// Save the index.
+f, _ := os.Create("index.safetensors")
+bm.Serialize(f)
+f.Close()
+
+// Load it back (no corpus needed — only the tokenizer and parameters).
+f, _ = os.Open("index.safetensors")
+loaded, err := bm25.LoadBM25Okapi(f, tokenizer, 1.5, 0.75, nil)
+f.Close()
+
+scores, _ := loaded.GetScores(query)
+```
+
+All variants have a corresponding load function: `LoadBM25Okapi`, `LoadBM25L`, `LoadBM25Plus`, `LoadBM25T`, `LoadBM25Adpt`.
+
+The SafeTensors format stores IDF values, term-frequency vectors, and document lengths as raw float64 tensors — no text-to-float parsing overhead on load. The `safetensors` sub-package is also usable standalone for any typed tensor storage.
 
 ## Contributing
 

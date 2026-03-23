@@ -10,7 +10,7 @@ import time
 
 from rank_bm25 import BM25Okapi, BM25L, BM25Plus
 
-TESTDATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata")
+TESTDATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "testdata")
 
 
 def load_corpus(n):

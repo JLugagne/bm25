@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_DIR"
 
 DIVIDER="$(printf '=%.0s' {1..110})"
 SUBDIV="$(printf '-%.0s' {1..110})"
@@ -59,7 +60,7 @@ echo "  Python Benchmarks"
 echo "$DIVIDER"
 echo
 
-python3 bench_python.py
+python3 benchmark/bench_python.py
 
 # ── Summary comparison ──
 echo
