@@ -106,9 +106,10 @@ func TestJoinTokens(t *testing.T) {
 	}
 
 	// Test case: Joining a slice with empty strings
+	// strings.Join(["", "", ""], " ") produces "  " (two separators between three elements)
 	joined = JoinTokens([]string{"", "", ""}, " ")
-	if joined != " " {
-		t.Errorf("Expected a single space, but got '%s'", joined)
+	if joined != "  " {
+		t.Errorf("Expected two spaces, but got '%s'", joined)
 	}
 
 	// Test case: Joining a slice with different separators

@@ -1,51 +1,100 @@
 # BM25 Golang Implementation
 
-This repository provides a comprehensive implementation of various BM25 variants in the Go programming language. BM25 is a ranking function used by search engines to estimate the relevance of documents to a given search query. This implementation is inspired by and builds upon the work done by [Dorian Brown](https://github.com/dorianbrown/rank_bm25) in their Python implementation of BM25 algorithms.
+This is a fork of [crawlab-team/bm25](https://github.com/crawlab-team/bm25) — a comprehensive implementation of BM25 ranking variants in Go. BM25 is a ranking function used by search engines to estimate the relevance of documents to a given search query.
 
-## Table of Contents
+This fork includes significant correctness fixes, performance optimizations, and a complete rewrite of the scoring internals.
 
-- [BM25 Variants](#bm25-variants)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Initializing](#initializing)
-  - [Ranking Documents](#ranking-documents)
-  - [Parallel and Batched Computation](#parallel-and-batched-computation)
-- [Examples](#examples)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
+## Improvements Over Original
+
+### Correctness Fixes
+- **Fixed BM25 scoring math** — the original implementation had incorrect score calculations across all variants
+- **Cross-validated against Python `rank_bm25`** — test suite verifies Go output matches the reference Python implementation on shared corpora
+
+### Performance
+- **AVX2 SIMD scoring** — hand-written x86-64 assembly for the inner scoring loops (Okapi, BM25L, BM25+, BM25T/Adpt), with automatic scalar fallback on non-AVX2 hardware
+- **Precomputed TF vectors** — term frequencies are computed once at construction time and stored as dense `[]float64` vectors, eliminating per-query map lookups
+- **Precomputed IDF map** — all IDF values computed at construction, not on every query
+- **Immutable structs after construction** — all mutexes removed; structs are safe for concurrent reads with zero synchronization overhead
+- **Vectorized k-value computation** — `k1*(1-b) + k1*b*docLen/avgDocLen` computed in bulk via SIMD
+
+### Code Quality
+- **Flat package layout** — removed the nested `bm25/bm25` package; import directly as `github.com/crawlab-team/bm25`
+- **Complete test suite** — unit tests for all 5 variants, utility functions, and cross-validation against Python
+- **Shared benchmark corpus** — deterministic JSON test data used by both Go and Python benchmarks for fair comparison
 
 ## BM25 Variants
 
-This repository includes implementations of the following BM25 variants:
+- **Okapi BM25** — the classic variant
+- **BM25L** — addresses long-document bias
+- **BM25+** — adds a lower-bound term frequency component
+- **BM25-Adpt** — adaptive variant
+- **BM25T** — term-frequency saturation variant
 
-- Okapi BM25
-- BM25L
-- BM25+
-- BM25-Adpt
-- BM25T
+Based on ["A Study of Efficient and Robust IR Metrics"](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.723.8440&rep=rep1&type=pdf).
 
-These variants are based on the research paper ["A Study of Efficient and Robust IR Metrics"](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.723.8440&rep=rep1&type=pdf) by Luca Pinto, Diego Ceccarelli, and Claudio Lucchese, which provides an overview and benchmarks of each method.
+## Benchmark Results: Go vs Python
+
+Both implementations use the same shared test corpus (generated from `testdata/gen_bench_corpus.py`).
+
+**Hardware:** Intel Core i7-1185G7 @ 3.00GHz (4C/8T, Tiger Lake), 32GB RAM, AVX2+FMA
+**Go:** 1.25.8 linux/amd64
+**Python:** 3.14.3 with `rank_bm25`
+
+### GetScores (Okapi BM25)
+
+| Benchmark | Go (ns/op) | Python (ns/op) | Speedup |
+|---|---:|---:|---:|
+| 50 docs, 3-term query | 361 | 33,573 | **93x** |
+| 500 docs, 3-term query | 2,297 | 169,292 | **74x** |
+| 1000 docs, 5-term query | 5,214 | 625,686 | **120x** |
+
+### Construction (Okapi BM25)
+
+| Corpus Size | Go (ns/op) | Python (ns/op) | Speedup |
+|---|---:|---:|---:|
+| 50 docs | 1,273,908 | 2,110,851 | **1.7x** |
+| 100 docs | 2,592,636 | 4,183,753 | **1.6x** |
+| 500 docs | 13,180,155 | 21,318,684 | **1.6x** |
+| 1000 docs | 25,757,198 | 43,178,645 | **1.7x** |
+
+### Corpus Scaling (Okapi BM25, 3-term query)
+
+| Corpus Size | Go (ns/op) | Python (ns/op) | Speedup |
+|---|---:|---:|---:|
+| 50 docs | 362 | 33,484 | **93x** |
+| 100 docs | 2,401 | 48,032 | **20x** |
+| 500 docs | 7,963 | 166,155 | **21x** |
+| 1000 docs | 14,335 | 384,981 | **27x** |
+
+### Query Scaling (Okapi BM25, 500 docs)
+
+| Query Terms | Go (ns/op) | Python (ns/op) | Speedup |
+|---|---:|---:|---:|
+| 1 term | 6,447 | 67,051 | **10x** |
+| 3 terms | 7,508 | 169,361 | **23x** |
+| 5 terms | 8,617 | 285,953 | **33x** |
+| 10 terms | 12,186 | 593,126 | **49x** |
+
+### Running Benchmarks
+
+```bash
+# Run the comparison script
+./run_benchmarks.sh
+
+# Or run individually:
+go test -bench=. -benchmem -benchtime=2s -run='^$'
+python3 bench_python.py
+```
 
 ## Installation
 
-To use this BM25 implementation, you need to have Go installed on your system. You can download and install Go from the official website: [https://golang.org/dl/](https://golang.org/dl/)
-
-Once you have Go installed, you can clone this repository and build the package:
-
 ```bash
-git clone https://github.com/github.com/crawlab-team/bm25.git
-cd bm25-golang
-go build
+go get github.com/crawlab-team/bm25
 ```
 
 ## Usage
 
 ### Initializing
-
-To initialize a BM25 instance, you need to provide a corpus of text documents and a tokenizer function. The tokenizer function is responsible for splitting a document into individual tokens (e.g., words).
-
-Here's an example of how to initialize a BM25 instance using the `BM25Okapi` variant:
 
 ```go
 import (
@@ -63,72 +112,53 @@ tokenizer := func(s string) []string {
     return strings.Split(s, " ")
 }
 
-bm25, err := bm25.NewBM25Okapi(corpus, tokenizer, nil)
+bm, err := bm25.NewBM25Okapi(corpus, tokenizer, 1.5, 0.75, nil)
 if err != nil {
     // Handle error
 }
 ```
-
-In this example, we define a corpus of three text documents and a simple tokenizer function that splits the text on whitespace characters. We then create a new instance of `BM25Okapi` using the `NewBM25Okapi` function, passing in the corpus, tokenizer, and a logger (which can be `nil` if you don't need logging).
 
 ### Ranking Documents
 
-Once you have initialized a BM25 instance, you can use it to rank documents based on their relevance to a given query. Here's an example:
-
 ```go
-query := "windy London"
-tokenizedQuery := tokenizer(query)
+query := tokenizer("windy London")
 
-scores, err := bm25.GetScores(tokenizedQuery)
+scores, err := bm.GetScores(query)
 if err != nil {
     // Handle error
 }
-
-// Scores is now a slice of float64 values representing the relevance scores
-// for each document in the corpus.
 ```
 
-In this example, we define a query string `"windy London"` and tokenize it using the same tokenizer function we used for the corpus. We then call the `GetScores` method on the `BM25Okapi` instance, passing in the tokenized query. The `GetScores` method returns a slice of `float64` values representing the relevance scores for each document in the corpus.
-
-Alternatively, you can use the `GetTopN` method to retrieve the top `N` most relevant documents:
+### Top-N Retrieval
 
 ```go
-topN := 1
-topDocs, err := bm25.GetTopN(tokenizedQuery, topN)
+topDocs, err := bm.GetTopN(query, 10)
 if err != nil {
     // Handle error
 }
-
-// topDocs is now a slice of strings containing the top N most relevant documents.
 ```
 
-In this example, we call the `GetTopN` method on the `BM25Okapi` instance, passing in the tokenized query and the value `1` for `topN`. The `GetTopN` method returns a slice of strings containing the top `N` most relevant documents.
+### Batch Scoring
 
-### Parallel and Batched Computation
+Score a subset of documents by ID:
 
-This implementation also provides parallel and batched computation methods for improved performance when dealing with large corpora or many queries. These methods include:
-
-- `GetScoresParallel`: Computes the BM25 scores for a given query using parallel computation.
-- `GetBatchScoresParallel`: Computes the BM25 scores for a given query and a subset of documents using parallel computation.
-- `GetTopNParallel`: Returns the top `N` documents for a given query using parallel computation.
-- `GetScoresBatched`: Computes the BM25 scores for a given query using parallel computation with batching.
-- `GetBatchScoresBatched`: Computes the BM25 scores for a given query and a subset of documents using parallel computation with batching.
-- `GetTopNBatched`: Returns the top `N` documents for a given query using parallel computation with batching.
-
-These methods follow a similar usage pattern as their non-parallel and non-batched counterparts, but they provide improved performance by leveraging Go's concurrency features and batching techniques.
-
-## Examples
-
-For more detailed examples and usage scenarios, please refer to the `examples/` directory in this repository.
+```go
+scores, err := bm.GetBatchScores(query, []int{0, 2, 5})
+if err != nil {
+    // Handle error
+}
+```
 
 ## Contributing
 
-Contributions to this project are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request. Make sure to follow the established coding conventions and provide appropriate tests for any new features or bug fixes.
+Contributions welcome. Please open an issue or submit a pull request with appropriate tests.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+[MIT License](LICENSE)
 
 ## Acknowledgments
 
-This BM25 implementation in Go is inspired by and builds upon the work done by [Dorian Brown](https://github.com/dorianbrown/rank_bm25) in their Python implementation of BM25 algorithms. We would like to express our gratitude for their valuable contribution to the field of information retrieval and for providing a solid foundation for this Go implementation.
+- Original Go implementation by [crawlab-team](https://github.com/crawlab-team/bm25)
+- Python reference implementation by [Dorian Brown](https://github.com/dorianbrown/rank_bm25)
+- BM25 variant research: Luca Pinto, Diego Ceccarelli, and Claudio Lucchese
