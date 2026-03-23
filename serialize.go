@@ -19,10 +19,13 @@ const (
 	metaTerms       = "terms" // comma-separated sorted term list for stable ordering
 )
 
-// Serialize writes the precomputed vectors from a bm25Base (IDF map,
-// term-frequency vectors, doc lengths, avg doc length) to w in safetensors
-// format. The original corpus text is NOT stored — only the numeric vectors
-// needed for scoring.
+// Serialize writes the precomputed index (IDF values, term-frequency vectors,
+// document lengths, and average document length) to w in SafeTensors binary
+// format.
+//
+// The original corpus text is NOT stored — only the numeric vectors needed for
+// scoring. To reconstruct a usable index, pass the same tokenizer to the
+// corresponding Load function (e.g. [LoadBM25Okapi]).
 func (b *bm25Base) Serialize(w io.Writer) error {
 	// Collect terms in sorted order for deterministic output.
 	terms := make([]string, 0, len(b.idf))
@@ -53,13 +56,16 @@ func (b *bm25Base) Serialize(w io.Writer) error {
 	return safetensors.Serialize(w, f)
 }
 
-// LoadBase reads precomputed BM25 vectors from r (safetensors format) and
+// LoadBase reads precomputed BM25 vectors from r (SafeTensors format) and
 // reconstructs a bm25Base. The caller must supply the same tokenizer used
-// during construction (needed for future queries) and an optional logger.
+// during the original index construction (it is needed for future queries).
 //
-// The original corpus text is NOT restored — only the numeric vectors. Methods
-// that rely on the tokenized corpus (e.g. GetTopN returning document text)
-// will not work unless the corpus is re-attached separately.
+// The original corpus text is NOT restored — only the numeric scoring vectors.
+// Methods that return document text (e.g. GetTopN) will not work unless the
+// corpus is re-attached separately.
+//
+// Most callers should use a variant-specific loader instead ([LoadBM25Okapi],
+// [LoadBM25L], [LoadBM25Plus], [LoadBM25T], or [LoadBM25Adpt]).
 func LoadBase(r io.Reader, tokenizer func(string) []string, logger *log.Logger) (*bm25Base, error) {
 	f, err := safetensors.Deserialize(r)
 	if err != nil {

@@ -5,7 +5,9 @@ import (
 	"log"
 )
 
-// LoadBM25Okapi loads a serialized BM25Okapi index from r.
+// LoadBM25Okapi deserializes a BM25 Okapi index previously written with
+// Serialize. The caller must supply the same tokenizer used during original
+// construction, along with the k1 and b parameters.
 func LoadBM25Okapi(r io.Reader, tokenizer func(string) []string, k1, b float64, logger *log.Logger) (*BM25Okapi, error) {
 	base, err := LoadBase(r, tokenizer, logger)
 	if err != nil {
@@ -14,7 +16,9 @@ func LoadBM25Okapi(r io.Reader, tokenizer func(string) []string, k1, b float64, 
 	return &BM25Okapi{bm25Base: base, k1: k1, b: b}, nil
 }
 
-// LoadBM25L loads a serialized BM25L index from r.
+// LoadBM25L deserializes a BM25L index previously written with Serialize.
+// The caller must supply the same tokenizer used during original construction,
+// along with the k1 and b parameters.
 func LoadBM25L(r io.Reader, tokenizer func(string) []string, k1, b float64, logger *log.Logger) (*BM25L, error) {
 	base, err := LoadBase(r, tokenizer, logger)
 	if err != nil {
@@ -23,7 +27,9 @@ func LoadBM25L(r io.Reader, tokenizer func(string) []string, k1, b float64, logg
 	return &BM25L{bm25Base: base, k1: k1, b: b}, nil
 }
 
-// LoadBM25Plus loads a serialized BM25Plus index from r.
+// LoadBM25Plus deserializes a BM25+ index previously written with Serialize.
+// The caller must supply the same tokenizer used during original construction,
+// along with the k1, b, delta, and epsilon parameters.
 func LoadBM25Plus(r io.Reader, tokenizer func(string) []string, k1, b, delta, epsilon float64, logger *log.Logger) (*BM25Plus, error) {
 	base, err := LoadBase(r, tokenizer, logger)
 	if err != nil {
@@ -35,7 +41,9 @@ func LoadBM25Plus(r io.Reader, tokenizer func(string) []string, k1, b, delta, ep
 	}, nil
 }
 
-// LoadBM25T loads a serialized BM25T index from r.
+// LoadBM25T deserializes a BM25T index previously written with Serialize.
+// The caller must supply the same tokenizer used during original construction,
+// along with the k1, b, and delta parameters.
 func LoadBM25T(r io.Reader, tokenizer func(string) []string, k1, b, delta float64, logger *log.Logger) (*BM25T, error) {
 	base, err := LoadBase(r, tokenizer, logger)
 	if err != nil {
@@ -47,7 +55,9 @@ func LoadBM25T(r io.Reader, tokenizer func(string) []string, k1, b, delta float6
 	}, nil
 }
 
-// LoadBM25Adpt loads a serialized BM25Adpt index from r.
+// LoadBM25Adpt deserializes an adaptive BM25 index previously written with
+// Serialize. The caller must supply the same tokenizer used during original
+// construction, along with the k1, b, and delta parameters.
 func LoadBM25Adpt(r io.Reader, tokenizer func(string) []string, k1, b, delta float64, logger *log.Logger) (*BM25Adpt, error) {
 	base, err := LoadBase(r, tokenizer, logger)
 	if err != nil {

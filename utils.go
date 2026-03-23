@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-// CountTermFreq counts the frequency of a term in a document using the provided tokenizer function.
+// CountTermFreq counts the number of times term appears in doc after
+// tokenization. The tokenizer function splits doc into tokens using the
+// same logic used during index construction.
 func CountTermFreq(term string, doc string, tokenizer func(string) []string) (int, error) {
 	if term == "" {
 		return 0, errors.New("term cannot be empty")
@@ -30,7 +32,9 @@ func CountTermFreq(term string, doc string, tokenizer func(string) []string) (in
 	return freq, nil
 }
 
-// TopNIndices returns the indices of the top N scores in the given slice.
+// TopNIndices returns the indices of the top n highest values in scores,
+// sorted in descending order. If n exceeds len(scores), all indices are
+// returned.
 func TopNIndices(scores []float64, n int) ([]int, error) {
 	if n <= 0 {
 		return nil, errors.New("n must be a positive integer")
@@ -48,12 +52,12 @@ func TopNIndices(scores []float64, n int) ([]int, error) {
 	return indices[:Min(n, len(indices))], nil
 }
 
-// JoinTokens joins the tokens in a document into a single string using the provided separator.
+// JoinTokens concatenates tokens into a single string with the given separator.
 func JoinTokens(tokens []string, separator string) string {
 	return strings.Join(tokens, separator)
 }
 
-// Min returns the minimum of two integers.
+// Min returns the smaller of a and b.
 func Min(a, b int) int {
 	if a < b {
 		return a

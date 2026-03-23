@@ -7,14 +7,37 @@ import (
 	"math"
 )
 
-// BM25 is an interface that defines the common methods for all BM25 variants.
+// BM25 is the common interface implemented by all BM25 ranking variants.
+//
+// Every implementation precomputes IDF values and term-frequency vectors at
+// construction time, so all methods are safe for concurrent use.
 type BM25 interface {
+	// CorpusSize returns the number of documents in the indexed corpus.
 	CorpusSize() int
+
+	// AvgDocLen returns the average document length (in tokens) across the corpus.
 	AvgDocLen() float64
+
+	// DocLengths returns a slice containing the token count of each document,
+	// indexed by document position in the original corpus.
 	DocLengths() []int
+
+	// IDF returns the precomputed inverse document frequency for term.
+	// Terms not present in the corpus return 0 with a nil error.
+	// An error is returned only if term is the empty string.
 	IDF(term string) (float64, error)
+
+	// GetScores returns BM25 scores for every document in the corpus with
+	// respect to the given query tokens. The returned slice is indexed by
+	// document position.
 	GetScores(query []string) ([]float64, error)
+
+	// GetBatchScores returns BM25 scores for the subset of documents
+	// identified by docIDs. The returned slice is parallel to docIDs.
 	GetBatchScores(query []string, docIDs []int) ([]float64, error)
+
+	// GetTopN returns the top n highest-scoring documents for the given query,
+	// returned as their joined token strings.
 	GetTopN(query []string, n int) ([]string, error)
 }
 
@@ -44,10 +67,13 @@ type bm25Base struct {
 	logger       *log.Logger
 }
 
-// NewBM25Base creates a new instance of the bm25Base struct.
-// All IDF values and per-term frequency vectors are precomputed at construction
-// time so the resulting struct is fully immutable and safe for concurrent reads
-// without locks.
+// NewBM25Base creates a new bm25Base by tokenizing the corpus and precomputing
+// all IDF values and per-term frequency vectors. The resulting struct is fully
+// immutable and safe for concurrent reads without locks.
+//
+// The tokenizer function splits each document string into a slice of tokens.
+// It must not return an empty slice for any document. An optional logger
+// receives diagnostic messages during construction.
 func NewBM25Base(corpus []string, tokenizer func(string) []string, logger *log.Logger) (*bm25Base, error) {
 	if len(corpus) == 0 {
 		return nil, errors.New("corpus cannot be empty")
@@ -124,23 +150,25 @@ func NewBM25Base(corpus []string, tokenizer func(string) []string, logger *log.L
 	}, nil
 }
 
-// CorpusSize returns the size of the corpus.
+// CorpusSize returns the number of documents in the indexed corpus.
 func (b *bm25Base) CorpusSize() int {
 	return b.corpusSize
 }
 
-// AvgDocLen returns the average document length in the corpus.
+// AvgDocLen returns the average document length (in tokens) across the corpus.
 func (b *bm25Base) AvgDocLen() float64 {
 	return b.avgDocLen
 }
 
-// DocLengths returns the lengths of all documents in the corpus.
+// DocLengths returns the token count of each document, indexed by document
+// position in the original corpus.
 func (b *bm25Base) DocLengths() []int {
 	return b.docLengths
 }
 
-// IDF returns the precomputed inverse document frequency for the given term.
-// This method is safe for concurrent use — the idf map is immutable after construction.
+// IDF returns the precomputed inverse document frequency for term.
+// Terms not present in the corpus return 0 with a nil error.
+// An error is returned only if term is the empty string.
 func (b *bm25Base) IDF(term string) (float64, error) {
 	if term == "" {
 		return 0, errors.New("term cannot be empty")
@@ -278,17 +306,20 @@ func (b *bm25Base) getTopN(query []string, n int, k1, bParam float64, fn scoreFu
 	return topDocs, nil
 }
 
-// GetScores returns the BM25 scores for the given query.
+// GetScores returns BM25 scores for every document in the corpus.
+// This base implementation always returns an error; use a concrete variant instead.
 func (b *bm25Base) GetScores(query []string) ([]float64, error) {
 	return nil, errors.New("not implemented")
 }
 
-// GetBatchScores returns the BM25 scores for the given query and a subset of documents.
+// GetBatchScores returns BM25 scores for the documents identified by docIDs.
+// This base implementation always returns an error; use a concrete variant instead.
 func (b *bm25Base) GetBatchScores(query []string, docIDs []int) ([]float64, error) {
 	return nil, errors.New("not implemented")
 }
 
-// GetTopN returns the top N documents for the given query.
+// GetTopN returns the top n highest-scoring documents for the given query.
+// This base implementation always returns an error; use a concrete variant instead.
 func (b *bm25Base) GetTopN(query []string, n int) ([]string, error) {
 	return nil, errors.New("not implemented")
 }

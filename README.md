@@ -100,7 +100,7 @@ go get github.com/crawlab-team/bm25
 ```go
 import (
     "strings"
-    "github.com/crawlab-team/bm25"
+    "github.com/JLugagne/bm25"
 )
 
 corpus := []string{
