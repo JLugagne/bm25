@@ -11,11 +11,11 @@ This fork includes significant correctness fixes, performance optimizations, and
 - **Cross-validated against Python `rank_bm25`** — test suite verifies Go output matches the reference Python implementation on shared corpora
 
 ### Performance
-- **AVX2 SIMD scoring** — hand-written x86-64 assembly for the inner scoring loops (Okapi, BM25L, BM25+, BM25T/Adpt), with automatic scalar fallback on non-AVX2 hardware
+- **SIMD scoring (AVX2 + NEON)** — hand-written assembly for the inner scoring loops (Okapi, BM25L, BM25+, BM25T/Adpt) on both x86-64 (AVX2, 4×float64) and ARM64 (NEON, 2×float64), with automatic scalar fallback on unsupported hardware
 - **Precomputed TF vectors** — term frequencies are computed once at construction time and stored as dense `[]float64` vectors, eliminating per-query map lookups
 - **Precomputed IDF map** — all IDF values computed at construction, not on every query
 - **Immutable structs after construction** — all mutexes removed; structs are safe for concurrent reads with zero synchronization overhead
-- **Vectorized k-value computation** — `k1*(1-b) + k1*b*docLen/avgDocLen` computed in bulk via SIMD
+- **Vectorized k-value computation** — `k1*(1-b) + k1*b*docLen/avgDocLen` computed in bulk via SIMD (FMA on x86-64, FMLA on ARM64)
 - **SafeTensors serialization** — save/load precomputed indexes using the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format; skip corpus reprocessing on startup
 
 ### Code Quality

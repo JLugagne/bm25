@@ -119,6 +119,105 @@ func TestSerializeRoundTripBatchScores(t *testing.T) {
 	}
 }
 
+func TestSerializeRoundTripL(t *testing.T) {
+	orig, err := NewBM25L(testCorpus, tokenize, 1.5, 0.75, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := orig.Serialize(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadBM25L(&buf, tokenize, 1.5, 0.75, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	query := []string{"cat", "dog"}
+	origScores, err := orig.GetScores(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loadedScores, err := loaded.GetScores(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range origScores {
+		if math.Abs(origScores[i]-loadedScores[i]) > 1e-12 {
+			t.Errorf("score[%d]: orig=%v loaded=%v", i, origScores[i], loadedScores[i])
+		}
+	}
+}
+
+func TestSerializeRoundTripT(t *testing.T) {
+	orig, err := NewBM25T(testCorpus, tokenize, 1.5, 0.75, 1.0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := orig.Serialize(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadBM25T(&buf, tokenize, 1.5, 0.75, 1.0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	query := []string{"bird", "flew"}
+	origScores, err := orig.GetScores(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loadedScores, err := loaded.GetScores(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range origScores {
+		if math.Abs(origScores[i]-loadedScores[i]) > 1e-12 {
+			t.Errorf("score[%d]: orig=%v loaded=%v", i, origScores[i], loadedScores[i])
+		}
+	}
+}
+
+func TestSerializeRoundTripAdpt(t *testing.T) {
+	orig, err := NewBM25Adpt(testCorpus, tokenize, 1.5, 0.75, 1.0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := orig.Serialize(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadBM25Adpt(&buf, tokenize, 1.5, 0.75, 1.0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	query := []string{"cat", "bird"}
+	origScores, err := orig.GetScores(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loadedScores, err := loaded.GetScores(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range origScores {
+		if math.Abs(origScores[i]-loadedScores[i]) > 1e-12 {
+			t.Errorf("score[%d]: orig=%v loaded=%v", i, origScores[i], loadedScores[i])
+		}
+	}
+}
+
 func TestLoadedMetadata(t *testing.T) {
 	orig, err := NewBM25Okapi(testCorpus, tokenize, 1.5, 0.75, nil)
 	if err != nil {
