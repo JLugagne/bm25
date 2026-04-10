@@ -19,7 +19,7 @@ This fork includes significant correctness fixes, performance optimizations, and
 - **SafeTensors serialization** — save/load precomputed indexes using the [SafeTensors](https://huggingface.co/docs/safetensors/) binary format; skip corpus reprocessing on startup
 
 ### Code Quality
-- **Flat package layout** — removed the nested `bm25/bm25` package; import directly as `github.com/crawlab-team/bm25`
+- **Flat package layout** — removed the nested `bm25/bm25` package; import directly as `github.com/JLugagne/bm25`
 - **Complete test suite** — unit tests for all 5 variants, utility functions, and cross-validation against Python
 - **Shared benchmark corpus** — deterministic JSON test data used by both Go and Python benchmarks for fair comparison
 
